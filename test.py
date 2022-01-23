@@ -72,7 +72,7 @@ def main(args):
         dataset=ShapeNet15k(
             root=args.data_dir,
             cate=args.cate,
-            split="test",
+            split=args.split,
             random_sample=False,
             sample_size=args.sample_size,
         ),
@@ -98,14 +98,12 @@ def main(args):
         isab_inds=16,
         ln=True,
     )
-    opt = torch.optim.Adam(net.parameters())
-    sch = torch.optim.lr_scheduler.LambdaLR(opt, lr_lambda=lambda e: 1.0)
 
     # Setup trainer
     trainer = Trainer(
         net,
-        opt,
-        sch,
+        opt=None,
+        sch=None,
         max_epoch=0,
         kl_warmup_epoch=0,
         log_every_n_step=0,
@@ -121,6 +119,7 @@ def main(args):
 
     # Start testing
     metrics, _ = trainer.test(test_loader)
+    torch.set_printoptions(precision=6)
     pprint.pprint(metrics)
 
 
