@@ -46,9 +46,9 @@ sh scripts/test_shapenet_chair.sh
 ```
 
 ## Metrics
-Table below shows metrics computed from trained models using the official SetVAE implementation and our implementation. Best scores are highlighed in bold. **MMD-CD** is scaled by 10<sup>3</sup> and **MMD-EMD** by 10<sup>2</sup>.
+Table below shows metrics computed from trained models using the official SetVAE implementation and our implementation. Best scores are highlighed in bold. **MMD-CD** is scaled by 10<sup>3</sup> and **MMD-EMD**, **COV**, **1-NNA** by 10<sup>2</sup>.
 
-| Category  | Model | MMD(↓) CD | MMD(↓) EMD | COV(%,↑) CD | COV(%,↑) EMD | 1-NNA(%,↓) CD | 1-NNA(%,↓) EMD |
+| Category  | Model | MMD(↓) CD | MMD(↓) EMD | COV(↑) CD | COV(↑) EMD | 1-NNA(↓) CD | 1-NNA(↓) EMD |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | Airplane | Official | **0.199** | **3.07** | 43.45 | **44.93** | **75.31** | **77.65** |
 |  | Ours     | 0.208 | 3.15 | **48.89** | 43.70 | 77.04 | 81.98 |
