@@ -27,12 +27,12 @@ def compute_metrics(x, y, batch_size):
     acc_cd = compute_knn(cd_yy, cd_yx, cd_xx, k=1)
     acc_emd = compute_knn(emd_yy, emd_yx, emd_xx, k=1)
     return {
-        "1NN-CD-acc": acc_cd.cpu(),
-        "1NN-EMD-acc": acc_emd.cpu(),
-        "cov-CD": cov_cd.cpu(),
-        "cov-EMD": cov_emd.cpu(),
-        "mmd-CD": mmd_cd.cpu(),
-        "mmd-EMD": mmd_emd.cpu(),
+        "1-NNA-CD": acc_cd.cpu(),
+        "1-NNA-EMD": acc_emd.cpu(),
+        "COV-CD": cov_cd.cpu(),
+        "COV-EMD": cov_emd.cpu(),
+        "MMD-CD": mmd_cd.cpu(),
+        "MMD-EMD": mmd_emd.cpu(),
     }
 
 

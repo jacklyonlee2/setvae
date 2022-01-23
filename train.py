@@ -62,10 +62,16 @@ def parse_args():
         help="Minibatch size used during training and testing.",
     )
     parser.add_argument(
-        "--sample_size",
+        "--tr_sample_size",
         type=int,
-        default=1024,
+        default=2048,
         help="Number of points sampled from each training sample.",
+    )
+    parser.add_argument(
+        "--te_sample_size",
+        type=int,
+        default=512,
+        help="Number of points sampled from each testing sample.",
     )
     parser.add_argument(
         "--max_epoch", type=int, default=8000, help="Total training epoch."
@@ -133,7 +139,7 @@ def main(args):
             cate=args.cate,
             split="train",
             random_sample=True,
-            sample_size=args.sample_size,
+            sample_size=args.tr_sample_size,
         ),
         batch_size=args.batch_size,
         shuffle=True,
@@ -147,7 +153,7 @@ def main(args):
             cate=args.cate,
             split="val",
             random_sample=False,
-            sample_size=1024,
+            sample_size=args.te_sample_size,
         ),
         batch_size=args.batch_size,
         shuffle=False,

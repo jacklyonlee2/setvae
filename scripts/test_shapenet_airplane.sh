@@ -3,4 +3,5 @@ python test.py \
   --cate airplane \
   --split val \
   --batch_size 128 \
-  --sample_size 2048
+  --sample_size 2048 \
+  --seed 34678
