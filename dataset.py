@@ -1,5 +1,4 @@
 import os
-import random
 import numpy as np
 
 import torch
@@ -21,12 +20,18 @@ class ShapeNet15k(torch.utils.data.Dataset):
             if fname.endswith(".npy"):
                 path = os.path.join(cate_dir, fname)
                 sample = np.load(path)[np.newaxis, ...]
-                self.data.append(sample)
+                self.data.append(torch.from_numpy(sample).float())
 
-        self.data = np.concatenate(self.data)
-        self.mu = self.data.reshape(-1, 3).mean(axis=0).reshape((1, 3))
-        self.std = self.data.reshape(-1).std(axis=0).reshape((1, 1))
+        # Normalize data
+        self.data = torch.cat(self.data, dim=0)
+        self.mu = self.data.view(-1, 3).mean(dim=0).view(1, 3)
+        self.std = self.data.view(-1).std(dim=0).view(1, 1)
         self.data = (self.data - self.mu) / self.std
+
+        # Following lines are purely for reproducing results of 
+        # the official SetVAE implementation: github.com/jw9730/setvae 
+        tr_data, te_data = self.data.split(10000, dim=1)
+        self.data = tr_data if split == "train" else te_data
 
         self.random_sample = random_sample
         self.sample_size = sample_size
@@ -36,12 +41,10 @@ class ShapeNet15k(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         x = self.data[idx]
-        indices = (
-            np.random.choice(x.shape[0], self.sample_size)
+        sample_idx = (
+            torch.randperm(x.size(0))[: self.sample_size]
             if self.random_sample
-            else np.arange(self.sample_size)
+            else torch.arange(self.sample_size)
         )
-        x = torch.from_numpy(x[indices]).float()
-        mu = torch.from_numpy(self.mu).float()
-        std = torch.from_numpy(self.std).float()
-        return x, mu, std
+        x = x[sample_idx]
+        return x, self.mu, self.std
