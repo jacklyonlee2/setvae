@@ -83,7 +83,7 @@ def main(args):
         drop_last=False,
     )
 
-    # Setup model, optimizer and scheduler
+    # Setup model
     net = SetVAE(
         input_dim=3,
         max_outputs=2500,
