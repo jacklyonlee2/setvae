@@ -185,16 +185,16 @@ def main(args):
     # Setup trainer
     trainer = Trainer(
         net,
-        opt,
-        sch,
+        opt=opt,
+        sch=sch,
+        device=args.device,
+        batch_size=args.batch_size,
         max_epoch=args.max_epoch,
         kl_warmup_epoch=args.kl_warmup_epoch,
         log_every_n_step=args.log_every_n_step,
         val_every_n_epoch=args.val_every_n_epoch,
         ckpt_every_n_epoch=args.ckpt_every_n_epoch,
-        batch_size=args.batch_size,
         ckpt_dir=ckpt_subdir,
-        device=args.device,
     )
 
     # Load checkpoint

@@ -28,8 +28,8 @@ class ShapeNet15k(torch.utils.data.Dataset):
         self.std = self.data.view(-1).std(dim=0).view(1, 1)
         self.data = (self.data - self.mu) / self.std
 
-        # Following lines are purely for reproducing results of 
-        # the official SetVAE implementation: github.com/jw9730/setvae 
+        # Following lines are purely for reproducing results of
+        # the official SetVAE implementation: github.com/jw9730/setvae
         tr_data, te_data = self.data.split(10000, dim=1)
         self.data = tr_data if split == "train" else te_data
 

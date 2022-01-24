@@ -1,10 +1,10 @@
 import os
 import wandb
 import torch
-import plotly as plt
 from tqdm import tqdm
 
-from metrics import *
+from utils import plot_samples
+from metrics import compute_cd, compute_metrics
 
 
 def _mask(x):
@@ -15,48 +15,6 @@ def _mask(x):
 def _unmask(x, x_mask):
     B, N = x.size(0), (~x_mask).sum(-1)[0]
     return x[~x_mask].reshape((B, N, -1))
-
-
-@torch.no_grad()
-def compute_metrics(x, y, batch_size):
-    cd_yx, emd_yx = compute_pairwise_cd_emd(y, x, batch_size)
-    mmd_cd, cov_cd = compute_mmd_cov(cd_yx.t())
-    mmd_emd, cov_emd = compute_mmd_cov(emd_yx.t())
-    cd_yy, emd_yy = compute_pairwise_cd_emd(y, y, batch_size)
-    cd_xx, emd_xx = compute_pairwise_cd_emd(x, x, batch_size)
-    acc_cd = compute_knn(cd_yy, cd_yx, cd_xx, k=1)
-    acc_emd = compute_knn(emd_yy, emd_yx, emd_xx, k=1)
-    return {
-        "1-NNA-CD": acc_cd.cpu(),
-        "1-NNA-EMD": acc_emd.cpu(),
-        "COV-CD": cov_cd.cpu(),
-        "COV-EMD": cov_emd.cpu(),
-        "MMD-CD": mmd_cd.cpu(),
-        "MMD-EMD": mmd_emd.cpu(),
-    }
-
-
-@torch.no_grad()
-def plot_samples(samples, num=4, rows=2, cols=2):
-    fig = plt.subplots.make_subplots(
-        rows=rows,
-        cols=cols,
-        specs=[[{"type": "Scatter3d"} for _ in range(cols)] for _ in range(rows)],
-    )
-    for i, sample in enumerate(samples[:num].cpu()):
-        fig.add_trace(
-            plt.graph_objects.Scatter3d(
-                x=sample[:, 0],
-                y=sample[:, 2],
-                z=sample[:, 1],
-                mode="markers",
-                marker=dict(size=3, opacity=0.8),
-            ),
-            row=i // cols + 1,
-            col=i % cols + 1,
-        )
-    fig.update_layout(showlegend=False)
-    return fig
 
 
 def compute_loss(o, x, kls, epoch, kl_warmup_epoch):
@@ -71,18 +29,20 @@ class Trainer:
     def __init__(
         self,
         net,
-        opt,
-        sch,
-        max_epoch,
-        kl_warmup_epoch,
-        log_every_n_step,
-        val_every_n_epoch,
-        ckpt_every_n_epoch,
-        batch_size,
-        ckpt_dir,
         device,
+        batch_size,
+        opt=None,
+        sch=None,
+        max_epoch=None,
+        kl_warmup_epoch=None,
+        log_every_n_step=None,
+        val_every_n_epoch=None,
+        ckpt_every_n_epoch=None,
+        ckpt_dir=None,
     ):
         self.net = net.to(device)
+        self.device = device
+        self.batch_size = batch_size
         self.opt = opt
         self.sch = sch
         self.step = 0
@@ -92,9 +52,7 @@ class Trainer:
         self.log_every_n_step = log_every_n_step
         self.val_every_n_epoch = val_every_n_epoch
         self.ckpt_every_n_epoch = ckpt_every_n_epoch
-        self.batch_size = batch_size
         self.ckpt_dir = ckpt_dir
-        self.device = device
 
     def _state_dict(self):
         return {
@@ -109,26 +67,26 @@ class Trainer:
 
     def _load_state_dict(self, state_dict):
         self.net.load_state_dict(state_dict["net"])
-        if self.opt:
-            self.opt.load_state_dict(state_dict["opt"])
-        if self.sch:
-            self.sch.load_state_dict(state_dict["sch"])
-        (
-            self.step,
-            self.epoch,
-            self.max_epoch,
-            self.kl_warmup_epoch,
-        ) = (state_dict[k] for k in ("step", "epoch", "max_epoch", "kl_warmup_epoch"))
+        self.opt and self.opt.load_state_dict(state_dict["opt"])
+        self.sch and self.sch.load_state_dict(state_dict["sch"])
+        self.step, self.epoch, self.max_epoch, self.kl_warmup_epoch = map(
+            state_dict.get,
+            (
+                "step",
+                "epoch",
+                "max_epoch",
+                "kl_warmup_epoch",
+            ),
+        )
 
     def save_checkpoint(self):
-        assert self.ckpt_dir, "Uninitialized checkpoint directory."
         ckpt_path = os.path.join(self.ckpt_dir, f"{self.epoch}.pth")
         torch.save(self._state_dict(), ckpt_path)
 
     def load_checkpoint(self, ckpt_path=None):
-        if not ckpt_path:
-            ckpt_paths = [f for f in os.listdir(self.ckpt_dir) if f.endswith(".pth")]
-            assert len(ckpt_paths) > 0, "No checkpoints found."
+        if not ckpt_path:  # Find last checkpoint in ckpt_dir
+            ckpt_paths = [p for p in os.listdir(self.ckpt_dir) if p.endswith(".pth")]
+            assert ckpt_paths, "No checkpoints found."
             ckpt_path = sorted(ckpt_paths, key=lambda f: int(f[:-4]))[-1]
             ckpt_path = os.path.join(self.ckpt_dir, ckpt_path)
         self._load_state_dict(torch.load(ckpt_path))
@@ -139,8 +97,6 @@ class Trainer:
         return compute_loss(o, x, kls, self.epoch, self.kl_warmup_epoch)
 
     def train(self, train_loader, val_loader):
-        assert self.opt, "Uninitialized optimizer."
-        assert self.sch, "Uninitialized scheduler."
         while self.epoch < self.max_epoch:
 
             # Validation and checkpointing

@@ -52,3 +52,22 @@ def compute_knn(dyy, dyx, dxx, k):
     count = sum(lb.index_select(0, idx[i]) for i in range(k))
     acc = (lb == (count >= (XY * (k / 2)))).float().mean()
     return acc
+
+
+@torch.no_grad()
+def compute_metrics(x, y, batch_size):
+    cd_yx, emd_yx = compute_pairwise_cd_emd(y, x, batch_size)
+    mmd_cd, cov_cd = compute_mmd_cov(cd_yx.t())
+    mmd_emd, cov_emd = compute_mmd_cov(emd_yx.t())
+    cd_yy, emd_yy = compute_pairwise_cd_emd(y, y, batch_size)
+    cd_xx, emd_xx = compute_pairwise_cd_emd(x, x, batch_size)
+    acc_cd = compute_knn(cd_yy, cd_yx, cd_xx, k=1)
+    acc_emd = compute_knn(emd_yy, emd_yx, emd_xx, k=1)
+    return {
+        "1-NNA-CD": acc_cd.cpu(),
+        "1-NNA-EMD": acc_emd.cpu(),
+        "COV-CD": cov_cd.cpu(),
+        "COV-EMD": cov_emd.cpu(),
+        "MMD-CD": mmd_cd.cpu(),
+        "MMD-EMD": mmd_emd.cpu(),
+    }

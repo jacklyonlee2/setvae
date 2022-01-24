@@ -102,15 +102,7 @@ def main(args):
     # Setup trainer
     trainer = Trainer(
         net,
-        opt=None,
-        sch=None,
-        max_epoch=0,
-        kl_warmup_epoch=0,
-        log_every_n_step=0,
-        val_every_n_epoch=0,
-        ckpt_every_n_epoch=0,
         batch_size=args.batch_size,
-        ckpt_dir=None,
         device=args.device,
     )
 
