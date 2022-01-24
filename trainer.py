@@ -110,7 +110,7 @@ class Trainer:
                 self.net.train()
                 for batch in t:
 
-                    # Training and update step
+                    # Update step
                     loss = self._train_step(*(t.to(self.device) for t in batch))
                     self.opt.zero_grad()
                     loss.backward()
