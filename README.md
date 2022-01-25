@@ -1,5 +1,5 @@
 # SetVAE
-This repository re-implements and reproduces the results of [SetVAE](https://github.com/jw9730/setvae) (CVPR'21).
+This repository implements and reproduces the results of [SetVAE](https://github.com/jw9730/setvae) (CVPR'21).
 
 ## Installation
 * Set up and activate conda environment.
