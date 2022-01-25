@@ -17,14 +17,6 @@ def _unmask(x, x_mask):
     return x[~x_mask].reshape((B, N, -1))
 
 
-def compute_loss(o, x, kls, epoch, kl_warmup_epoch):
-    cd_loss = compute_cd(o, x, reduce_func=torch.sum).mean()
-    kl_loss = torch.stack(kls, dim=1).sum(dim=1).mean()
-    if kl_warmup_epoch > 0:
-        kl_loss *= min(1.0, (epoch + 1) / kl_warmup_epoch)
-    return cd_loss + kl_loss
-
-
 class Trainer:
     def __init__(
         self,
@@ -66,9 +58,8 @@ class Trainer:
         }
 
     def _load_state_dict(self, state_dict):
-        self.net.load_state_dict(state_dict["net"])
-        self.opt and self.opt.load_state_dict(state_dict["opt"])
-        self.sch and self.sch.load_state_dict(state_dict["sch"])
+        for k, m in {"net": self.net, "opt": self.opt, "sch": self.sch}.items():
+            m and m.load_state_dict(state_dict[k])
         self.step, self.epoch, self.max_epoch, self.kl_warmup_epoch = map(
             state_dict.get,
             (
@@ -94,41 +85,55 @@ class Trainer:
     def _train_step(self, x, mu, std):
         o, o_mask, kls = self.net(x, _mask(x))
         o = _unmask(o, o_mask)
-        return compute_loss(o, x, kls, self.epoch, self.kl_warmup_epoch)
+        cd_loss = compute_cd(o, x, reduce_func=torch.sum).mean()
+        kl_loss = torch.stack(kls, dim=1).sum(dim=1).mean()
+        if self.kl_warmup_epoch > 0:
+            kl_loss *= min(1.0, (self.epoch + 1) / self.kl_warmup_epoch)
+        return cd_loss + kl_loss
 
     def train(self, train_loader, val_loader):
         while self.epoch < self.max_epoch:
 
-            # Validation and checkpointing
             if self.epoch % self.val_every_n_epoch == 0:
                 metrics, samples = self.test(val_loader)
-                wandb.log({**metrics, "samples": samples, "epoch": self.epoch})
+                wandb.log(
+                    {
+                        **metrics,
+                        "samples": samples,
+                        "step": self.step,
+                        "epoch": self.epoch,
+                    }
+                )
             if self.epoch % self.ckpt_every_n_epoch == 0:
                 self.save_checkpoint()
 
+            self.net.train()
             with tqdm(train_loader) as t:
-                self.net.train()
                 for batch in t:
+                    batch = [_.to(self.device) for _ in batch]
 
-                    # Update step
-                    loss = self._train_step(*(t.to(self.device) for t in batch))
+                    loss = self._train_step(*batch)
                     self.opt.zero_grad()
                     loss.backward()
                     self.opt.step()
 
-                    # Stepwise logging
                     t.set_description(f"Epoch:{self.epoch}|Loss:{loss.item():.2f}")
                     if self.step % self.log_every_n_step == 0:
                         wandb.log(
-                            {"loss": loss.cpu(), "step": self.step, "epoch": self.epoch}
+                            {
+                                "loss": loss.cpu(),
+                                "step": self.step,
+                                "epoch": self.epoch,
+                            }
                         )
 
                     self.step += 1
-                self.sch.step()
+            self.sch.step()
             self.epoch += 1
 
     def _test_step(self, x, mu, std):
-        o_size = torch.ones(x.size(0)).to(x) * x.size(1)
+        B, N, _ = x.shape
+        o_size = torch.ones(B).to(x) * N
         o, o_mask, _, _ = self.net.sample(o_size)
         x, o = x * std + mu, o * std + mu  # denormalize
         return _unmask(o, o_mask), x
@@ -143,5 +148,7 @@ class Trainer:
         results = []
         self.net.eval()
         for batch in tqdm(test_loader):
-            results.append(self._test_step(*(t.to(self.device) for t in batch)))
-        return self._test_end(*(torch.cat(_, dim=0) for _ in zip(*results)))
+            batch = [_.to(self.device) for _ in batch]
+            results.append(self._test_step(*batch))
+        results = [torch.cat(_, dim=0) for _ in zip(*results)]
+        return self._test_end(*results)

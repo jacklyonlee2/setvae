@@ -1,7 +1,7 @@
 import plotly as plt
 
 
-def plot_samples(samples, num=4, rows=2, cols=2):
+def plot_samples(samples, num=9, rows=3, cols=3):
     fig = plt.subplots.make_subplots(
         rows=rows,
         cols=cols,

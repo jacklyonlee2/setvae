@@ -184,7 +184,7 @@ def main(args):
 
     # Setup trainer
     trainer = Trainer(
-        net,
+        net=net,
         opt=opt,
         sch=sch,
         device=args.device,

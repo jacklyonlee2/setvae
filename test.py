@@ -101,7 +101,7 @@ def main(args):
 
     # Setup trainer
     trainer = Trainer(
-        net,
+        net=net,
         batch_size=args.batch_size,
         device=args.device,
     )
