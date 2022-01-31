@@ -28,7 +28,7 @@ You can train SetVAE using `train.py` or provided scripts.
 # Train SetVAE using CLI
 python train.py --name NAME --cate airplane
 # Train SetVAE using provided settings
-sh scripts/train_shapenet_aiplane.sh
+sh scripts/train_shapenet_airplane.sh
 sh scripts/train_shapenet_car.sh
 sh scripts/train_shapenet_chair.sh
 ```
@@ -40,7 +40,7 @@ You can evaluate checkpointed models using `test.py` or provided scripts.
 # Test user specified checkpoint using CLI
 python test.py --ckpt_path CKPT_PATH --cate car
 # Test provided SetVAE checkpoints
-sh scripts/test_shapenet_aiplane.sh
+sh scripts/test_shapenet_airplane.sh
 sh scripts/test_shapenet_car.sh
 sh scripts/test_shapenet_chair.sh
 ```
